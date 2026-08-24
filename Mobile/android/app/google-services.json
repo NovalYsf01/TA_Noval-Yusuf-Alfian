@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "40834897410",
+    "project_id": "warga20-3fb5c",
+    "storage_bucket": "warga20-3fb5c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:40834897410:android:a281a8f4c82c6b46d9f91b",
+        "android_client_info": {
+          "package_name": "com.warga20.warga20"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJp7-9pi8e1qVyZYU0MHj3IFcXLrhIUA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

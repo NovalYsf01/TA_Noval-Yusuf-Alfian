@@ -1,0 +1,65 @@
+name: warga20
+description: "Sistem Pelayanan Masyarakat RT 20"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # Typography
+  google_fonts: ^6.2.1
+
+  # Storage
+  shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.0.0
+
+  # Networking (siap untuk integrasi API)
+  http: ^1.2.2
+
+  # UI helpers
+  shimmer: ^3.0.0
+  cached_network_image: ^3.4.1
+
+  # Internationalization
+  intl: ^0.20.2
+
+  # Navigation & External
+  url_launcher: ^6.3.0
+
+  # File picker untuk attachment
+  file_picker: ^10.3.3
+  path_provider: ^2.1.6
+  open_filex: ^4.7.0
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/

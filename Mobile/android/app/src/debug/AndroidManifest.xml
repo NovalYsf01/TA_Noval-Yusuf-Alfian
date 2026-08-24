@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Debug manifest – hanya berlaku untuk debug build.
+      networkSecurityConfig mengizinkan cleartext HTTP ke server development lokal.
+      File ini TIDAK mempengaruhi release/production build.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application
+        android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

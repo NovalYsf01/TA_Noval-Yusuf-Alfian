@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config untuk DEBUG build SAJA.
+  Mengizinkan cleartext HTTP hanya ke IP server development lokal.
+
+  CATATAN: File ini TIDAK berlaku untuk release/production build.
+  Untuk production, semua traffic harus menggunakan HTTPS.
+-->
+<network-security-config>
+    <!-- Izinkan cleartext HTTP ke server development lokal -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.1.5</domain>
+    </domain-config>
+</network-security-config>

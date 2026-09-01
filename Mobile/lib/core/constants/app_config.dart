@@ -41,7 +41,7 @@ class AppConfig {
   // Base URL server Laravel (development / lokal).
   // GANTI nilai ini jika IP laptop berubah — cukup dari satu tempat ini.
   // Format: 'http://<IP_LAPTOP>:<PORT>/api/v1'
-  static const String apiBaseUrl = 'http://192.168.111.216:108/api/v1';
+  static const String apiBaseUrl =  'https://noval.djncloud.my.id/api/v1';
 
   // Request timeout (detik)
   static const int connectTimeout = 30;

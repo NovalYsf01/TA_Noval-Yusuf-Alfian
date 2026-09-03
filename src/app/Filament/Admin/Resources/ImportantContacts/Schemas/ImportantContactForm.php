@@ -19,24 +19,51 @@ final class ImportantContactForm
                 Section::make('Data Nomor Penting')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nama instansi/kontak')
+                            ->label(
+                                'Nama instansi/kontak'
+                            )
                             ->required()
                             ->maxLength(255),
+
                         TextInput::make('category')
                             ->label('Kategori')
-                            ->helperText('Contoh: Keamanan, Kesehatan, Utilitas, Pemerintahan.')
+                            ->helperText(
+                                'Contoh: Keamanan, Kesehatan, Utilitas, Pemerintahan.'
+                            )
                             ->required()
                             ->maxLength(100),
-                        TextInput::make('phone_number')
-                            ->label('Nomor telepon')
+
+                        TextInput::make(
+                            'phone_number'
+                        )
+                            ->label(
+                                'Nomor telepon'
+                            )
                             ->tel()
                             ->required()
                             ->maxLength(30),
+
                         Toggle::make('is_active')
-                            ->label('Tampilkan di aplikasi warga')
+                            ->label(
+                                'Tampilkan di aplikasi warga'
+                            )
+                            ->helperText(
+                                'Aktifkan agar nomor penting ditampilkan pada aplikasi warga.'
+                            )
                             ->default(true)
+                            ->onColor('success')
+                            ->offColor('danger')
+                            ->onIcon(
+                                'heroicon-m-check'
+                            )
+                            ->offIcon(
+                                'heroicon-m-x-mark'
+                            )
                             ->required(),
-                        Textarea::make('description')
+
+                        Textarea::make(
+                            'description'
+                        )
                             ->label('Keterangan')
                             ->rows(4)
                             ->maxLength(2000)

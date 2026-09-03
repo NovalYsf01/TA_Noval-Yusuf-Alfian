@@ -18,7 +18,9 @@ final class WargaForm
         return $schema
             ->components([
                 Section::make('Identitas Warga')
-                    ->description('Satu rumah menggunakan satu akun aplikasi warga.')
+                    ->description(
+                        'Satu rumah menggunakan satu akun aplikasi warga.'
+                    )
                     ->schema([
                         FileUpload::make('avatar_url')
                             ->label('Foto profil')
@@ -28,30 +30,44 @@ final class WargaForm
                             ->image()
                             ->avatar()
                             ->imageEditor()
-                            ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                            ])
                             ->maxSize(2048)
                             ->preventFilePathTampering()
                             ->columnSpanFull(),
+
                         TextInput::make('name')
                             ->label('Nama lengkap')
                             ->required()
                             ->maxLength(255),
+
                         TextInput::make('house_code')
                             ->label('Kode rumah')
-                            ->helperText('Contoh: A-12. Nilai ini harus unik untuk menerapkan satu rumah satu akun.')
+                            ->helperText(
+                                'Contoh: A-12. Nilai ini harus unik untuk menerapkan satu rumah satu akun.'
+                            )
                             ->required()
                             ->maxLength(50)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                ignoreRecord: true
+                            ),
+
                         TextInput::make('email')
                             ->label('Email')
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                ignoreRecord: true
+                            ),
+
                         TextInput::make('phone')
                             ->label('Nomor telepon')
                             ->tel()
                             ->maxLength(30),
+
                         Textarea::make('address')
                             ->label('Alamat lengkap')
                             ->required()
@@ -60,38 +76,81 @@ final class WargaForm
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+
                 Section::make('Akun Mobile')
                     ->schema([
                         TextInput::make('username')
                             ->label('Username')
-                            ->helperText('Username dipakai warga untuk login di aplikasi mobile.')
+                            ->helperText(
+                                'Username dipakai warga untuk login di aplikasi mobile.'
+                            )
                             ->required()
                             ->alphaDash()
                             ->maxLength(100)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                ignoreRecord: true
+                            ),
+
                         Toggle::make('is_active')
                             ->label('Akun aktif')
-                            ->helperText('Akun nonaktif tidak dapat login ke aplikasi warga.')
+                            ->helperText(
+                                'Akun nonaktif tidak dapat login ke aplikasi warga.'
+                            )
                             ->default(true)
+                            ->onColor('success')
+                            ->offColor('danger')
+                            ->onIcon(
+                                'heroicon-m-check'
+                            )
+                            ->offIcon(
+                                'heroicon-m-x-mark'
+                            )
                             ->required(),
+
                         TextInput::make('password')
                             ->label('Password')
                             ->password()
                             ->revealable()
                             ->confirmed()
-                            ->autocomplete('new-password')
+                            ->autocomplete(
+                                'new-password'
+                            )
                             ->minLength(8)
                             ->maxLength(255)
-                            ->required(fn (string $operation): bool => $operation === 'create')
-                            ->dehydrated(fn (?string $state): bool => filled($state))
-                            ->helperText('Wajib saat membuat akun. Kosongkan saat edit jika tidak ingin mengubah password.'),
-                        TextInput::make('password_confirmation')
-                            ->label('Konfirmasi password')
+                            ->required(
+                                fn (
+                                    string $operation
+                                ): bool =>
+                                    $operation === 'create'
+                            )
+                            ->dehydrated(
+                                fn (
+                                    ?string $state
+                                ): bool =>
+                                    filled($state)
+                            )
+                            ->helperText(
+                                'Wajib saat membuat akun. Kosongkan saat edit jika tidak ingin mengubah password.'
+                            ),
+
+                        TextInput::make(
+                            'password_confirmation'
+                        )
+                            ->label(
+                                'Konfirmasi password'
+                            )
                             ->password()
                             ->revealable()
-                            ->autocomplete('new-password')
+                            ->autocomplete(
+                                'new-password'
+                            )
                             ->dehydrated(false)
-                            ->required(fn (string $operation): bool => $operation === 'create'),
+                            ->required(
+                                fn (
+                                    string $operation
+                                ): bool =>
+                                    $operation === 'create'
+                            ),
                     ])
                     ->columns(2),
             ]);

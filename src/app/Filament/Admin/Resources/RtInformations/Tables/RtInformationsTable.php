@@ -26,58 +26,133 @@ final class RtInformationsTable
                     ->visibility('public')
                     ->square()
                     ->toggleable(),
+
                 TextColumn::make('title')
                     ->label('Judul')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
-                TextColumn::make('publication_status')
+
+                TextColumn::make(
+                    'publication_status'
+                )
                     ->label('Status')
-                    ->state(fn (RtInformation $record): string => match (true) {
-                        $record->published_at === null => 'Draf',
-                        $record->isPublished() => 'Terbit',
-                        default => 'Terjadwal',
-                    })
+                    ->state(
+                        fn (
+                            RtInformation $record
+                        ): string => match (true) {
+                            $record->published_at === null =>
+                                'Draf',
+
+                            $record->isPublished() =>
+                                'Terbit',
+
+                            default =>
+                                'Terjadwal',
+                        }
+                    )
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Terbit' => 'success',
-                        'Terjadwal' => 'info',
-                        default => 'gray',
-                    }),
+                    ->color(
+                        fn (
+                            string $state
+                        ): string => match ($state) {
+                            'Terbit' =>
+                                'success',
+
+                            'Terjadwal' =>
+                                'info',
+
+                            default =>
+                                'gray',
+                        }
+                    ),
+
                 TextColumn::make('published_at')
                     ->label('Waktu terbit')
                     ->dateTime('d M Y H:i')
                     ->placeholder('-')
                     ->sortable(),
+
                 TextColumn::make('creator.name')
                     ->label('Pembuat')
                     ->placeholder('-')
                     ->toggleable(),
+
                 TextColumn::make('updated_at')
                     ->label('Terakhir diubah')
                     ->since()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
             ])
+
             ->filters([
                 Filter::make('published')
                     ->label('Sudah terbit')
-                    ->query(fn (Builder $query): Builder => $query->published()),
+                    ->query(
+                        fn (
+                            Builder $query
+                        ): Builder =>
+                            $query->published()
+                    ),
+
                 Filter::make('draft')
                     ->label('Draf')
-                    ->query(fn (Builder $query): Builder => $query->whereNull('published_at')),
+                    ->query(
+                        fn (
+                            Builder $query
+                        ): Builder =>
+                            $query->whereNull(
+                                'published_at'
+                            )
+                    ),
+
                 Filter::make('scheduled')
                     ->label('Terjadwal')
-                    ->query(fn (Builder $query): Builder => $query
-                        ->whereNotNull('published_at')
-                        ->where('published_at', '>', now())),
+                    ->query(
+                        fn (
+                            Builder $query
+                        ): Builder =>
+                            $query
+                                ->whereNotNull(
+                                    'published_at'
+                                )
+                                ->where(
+                                    'published_at',
+                                    '>',
+                                    now()
+                                )
+                    ),
             ])
+
             ->recordActions([
-                ViewAction::make()->label(''),
-                EditAction::make()->label(''),
-                DeleteAction::make()->label(''),
+                ViewAction::make()
+                    ->label(''),
+
+                EditAction::make()
+                    ->label(''),
+
+                DeleteAction::make()
+                    ->label('Hapus')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(
+                        'Hapus Informasi RT'
+                    )
+                    ->modalDescription(
+                        'Informasi RT ini akan dihapus secara permanen.'
+                    )
+                    ->modalSubmitActionLabel(
+                        'Ya, Hapus'
+                    ),
             ])
-            ->defaultSort('created_at', 'desc')
+
+            ->defaultSort(
+                'created_at',
+                'desc'
+            )
             ->striped();
     }
 }

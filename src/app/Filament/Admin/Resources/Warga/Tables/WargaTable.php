@@ -6,6 +6,7 @@ namespace App\Filament\Admin\Resources\Warga\Tables;
 
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
@@ -39,7 +40,10 @@ final class WargaTable
                         fn (User $record): string =>
                             $record->username ?? '-'
                     )
-                    ->searchable(['name', 'username'])
+                    ->searchable([
+                        'name',
+                        'username',
+                    ])
                     ->sortable(),
 
                 TextColumn::make('house_code')
@@ -60,23 +64,43 @@ final class WargaTable
                     ->searchable()
                     ->toggleable(),
 
-                TextColumn::make('verification_status')
+                TextColumn::make(
+                    'verification_status'
+                )
                     ->label('Verifikasi')
                     ->badge()
                     ->formatStateUsing(
-                        fn (?string $state): string => match ($state) {
-                            'pending' => 'Menunggu',
-                            'verified' => 'Terverifikasi',
-                            'rejected' => 'Ditolak',
-                            default => '-',
+                        fn (
+                            ?string $state
+                        ): string => match ($state) {
+                            'pending' =>
+                                'Menunggu',
+
+                            'verified' =>
+                                'Terverifikasi',
+
+                            'rejected' =>
+                                'Ditolak',
+
+                            default =>
+                                '-',
                         }
                     )
                     ->color(
-                        fn (?string $state): string => match ($state) {
-                            'pending' => 'warning',
-                            'verified' => 'success',
-                            'rejected' => 'danger',
-                            default => 'gray',
+                        fn (
+                            ?string $state
+                        ): string => match ($state) {
+                            'pending' =>
+                                'warning',
+
+                            'verified' =>
+                                'success',
+
+                            'rejected' =>
+                                'danger',
+
+                            default =>
+                                'gray',
                         }
                     )
                     ->sortable(),
@@ -96,15 +120,26 @@ final class WargaTable
             ])
 
             ->filters([
-                SelectFilter::make('verification_status')
-                    ->label('Status verifikasi')
+                SelectFilter::make(
+                    'verification_status'
+                )
+                    ->label(
+                        'Status verifikasi'
+                    )
                     ->options([
-                        'pending' => 'Menunggu',
-                        'verified' => 'Terverifikasi',
-                        'rejected' => 'Ditolak',
+                        'pending' =>
+                            'Menunggu',
+
+                        'verified' =>
+                            'Terverifikasi',
+
+                        'rejected' =>
+                            'Ditolak',
                     ]),
 
-                TernaryFilter::make('is_active')
+                TernaryFilter::make(
+                    'is_active'
+                )
                     ->label('Status akun')
                     ->trueLabel('Aktif')
                     ->falseLabel('Nonaktif')
@@ -121,53 +156,92 @@ final class WargaTable
                 /*
                  * SETUJUI REGISTRASI
                  */
-                Action::make('approveRegistration')
+                Action::make(
+                    'approveRegistration'
+                )
                     ->label('Setujui')
-                    ->icon('heroicon-o-check-circle')
+                    ->icon(
+                        'heroicon-o-check-circle'
+                    )
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Setujui Registrasi Warga')
+                    ->modalHeading(
+                        'Setujui Registrasi Warga'
+                    )
                     ->modalDescription(
-                        fn (User $record): string =>
+                        fn (
+                            User $record
+                        ): string =>
                             "Setujui akun {$record->name} untuk rumah {$record->house_code}?"
                     )
-                    ->modalSubmitActionLabel('Ya, Setujui')
+                    ->modalSubmitActionLabel(
+                        'Ya, Setujui'
+                    )
                     ->visible(
-                        fn (User $record): bool =>
+                        fn (
+                            User $record
+                        ): bool =>
                             in_array(
-                                $record->verification_status,
-                                ['pending', 'rejected'],
+                                $record
+                                    ->verification_status,
+                                [
+                                    'pending',
+                                    'rejected',
+                                ],
                                 true
                             )
                     )
-                    ->action(function (User $record): void {
-                        $record->update([
-                            'verification_status' => 'verified',
-                            'verified_at' => now(),
-                            'verified_by' => auth()->id(),
-                            'rejection_reason' => null,
-                            'is_active' => true,
-                        ]);
+                    ->action(
+                        function (
+                            User $record
+                        ): void {
+                            $record->update([
+                                'verification_status' =>
+                                    'verified',
 
-                        Notification::make()
-                            ->success()
-                            ->title('Registrasi disetujui')
-                            ->body(
-                                "{$record->name} sekarang dapat login ke aplikasi mobile."
-                            )
-                            ->send();
-                    }),
+                                'verified_at' =>
+                                    now(),
+
+                                'verified_by' =>
+                                    auth()->id(),
+
+                                'rejection_reason' =>
+                                    null,
+
+                                'is_active' =>
+                                    true,
+                            ]);
+
+                            Notification::make()
+                                ->success()
+                                ->title(
+                                    'Registrasi disetujui'
+                                )
+                                ->body(
+                                    "{$record->name} sekarang dapat login ke aplikasi mobile."
+                                )
+                                ->send();
+                        }
+                    ),
 
                 /*
                  * TOLAK REGISTRASI
                  */
-                Action::make('rejectRegistration')
+                Action::make(
+                    'rejectRegistration'
+                )
                     ->label('Tolak')
-                    ->icon('heroicon-o-x-circle')
+                    ->icon(
+                        'heroicon-o-x-circle'
+                    )
                     ->color('danger')
                     ->schema([
-                        Textarea::make('rejection_reason')
-                            ->label('Alasan penolakan')
+                        Textarea::make(
+                            'rejection_reason'
+                        )
+                            ->label(
+                                'Alasan penolakan'
+                            )
                             ->placeholder(
                                 'Contoh: Data rumah tidak sesuai dengan data warga RT.'
                             )
@@ -175,35 +249,59 @@ final class WargaTable
                             ->required()
                             ->maxLength(1000),
                     ])
-                    ->modalHeading('Tolak Registrasi Warga')
+                    ->modalHeading(
+                        'Tolak Registrasi Warga'
+                    )
                     ->modalDescription(
-                        fn (User $record): string =>
+                        fn (
+                            User $record
+                        ): string =>
                             "Masukkan alasan penolakan untuk akun {$record->name}."
                     )
-                    ->modalSubmitActionLabel('Tolak Registrasi')
+                    ->modalSubmitActionLabel(
+                        'Tolak Registrasi'
+                    )
                     ->visible(
-                        fn (User $record): bool =>
-                            $record->verification_status === 'pending'
+                        fn (
+                            User $record
+                        ): bool =>
+                            $record
+                                ->verification_status
+                            === 'pending'
                     )
                     ->action(
                         function (
                             User $record,
                             array $data
                         ): void {
-                            $record->tokens()->delete();
+                            $record
+                                ->tokens()
+                                ->delete();
 
                             $record->update([
-                                'verification_status' => 'rejected',
-                                'verified_at' => null,
-                                'verified_by' => auth()->id(),
+                                'verification_status' =>
+                                    'rejected',
+
+                                'verified_at' =>
+                                    null,
+
+                                'verified_by' =>
+                                    auth()->id(),
+
                                 'rejection_reason' =>
-                                    $data['rejection_reason'],
-                                'is_active' => false,
+                                    $data[
+                                        'rejection_reason'
+                                    ],
+
+                                'is_active' =>
+                                    false,
                             ]);
 
                             Notification::make()
                                 ->success()
-                                ->title('Registrasi ditolak')
+                                ->title(
+                                    'Registrasi ditolak'
+                                )
                                 ->body(
                                     "Registrasi {$record->name} telah ditolak."
                                 )
@@ -212,74 +310,155 @@ final class WargaTable
                     ),
 
                 /*
-                 * AKTIFKAN KEMBALI AKUN YANG SUDAH TERVERIFIKASI
+                 * HAPUS REGISTRASI.
+                 *
+                 * Hanya akun pending / rejected.
+                 * Akun terverifikasi tidak boleh
+                 * dihapus untuk menjaga histori.
+                 */
+                DeleteAction::make()
+                    ->label('Hapus')
+                    ->icon(
+                        'heroicon-o-trash'
+                    )
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(
+                        'Hapus Registrasi Warga'
+                    )
+                    ->modalDescription(
+                        fn (
+                            User $record
+                        ): string =>
+                            "Hapus registrasi {$record->name} untuk rumah {$record->house_code}? Data akun akan dihapus permanen dan kode rumah dapat digunakan untuk registrasi kembali."
+                    )
+                    ->modalSubmitActionLabel(
+                        'Ya, Hapus'
+                    )
+                    ->visible(
+                        fn (
+                            User $record
+                        ): bool =>
+                            in_array(
+                                $record
+                                    ->verification_status,
+                                [
+                                    'pending',
+                                    'rejected',
+                                ],
+                                true
+                            )
+                    ),
+
+                /*
+                 * AKTIFKAN AKUN
                  */
                 Action::make('activate')
                     ->label('Aktifkan')
-                    ->icon('heroicon-o-lock-open')
+                    ->icon(
+                        'heroicon-o-lock-open'
+                    )
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(
-                        fn (User $record): bool =>
-                            $record->verification_status === 'verified'
-                            && ! $record->is_active
+                        fn (
+                            User $record
+                        ): bool =>
+                            $record
+                                ->verification_status
+                            === 'verified'
+                            && ! $record
+                                ->is_active
                     )
-                    ->action(function (User $record): void {
-                        $record->update([
-                            'is_active' => true,
-                        ]);
+                    ->action(
+                        function (
+                            User $record
+                        ): void {
+                            $record->update([
+                                'is_active' =>
+                                    true,
+                            ]);
 
-                        Notification::make()
-                            ->success()
-                            ->title('Akun warga diaktifkan')
-                            ->body(
-                                "{$record->name} sekarang dapat login ke aplikasi mobile."
-                            )
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->success()
+                                ->title(
+                                    'Akun warga diaktifkan'
+                                )
+                                ->body(
+                                    "{$record->name} sekarang dapat login ke aplikasi mobile."
+                                )
+                                ->send();
+                        }
+                    ),
 
                 /*
-                 * NONAKTIFKAN AKUN YANG SUDAH TERVERIFIKASI
+                 * NONAKTIFKAN AKUN
                  */
                 Action::make('deactivate')
                     ->label('Nonaktifkan')
-                    ->icon('heroicon-o-lock-closed')
+                    ->icon(
+                        'heroicon-o-lock-closed'
+                    )
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalDescription(
                         'Warga tidak akan dapat login sampai akun diaktifkan kembali.'
                     )
                     ->visible(
-                        fn (User $record): bool =>
-                            $record->verification_status === 'verified'
-                            && $record->is_active
+                        fn (
+                            User $record
+                        ): bool =>
+                            $record
+                                ->verification_status
+                            === 'verified'
+                            && $record
+                                ->is_active
                     )
-                    ->action(function (User $record): void {
-                        $record->tokens()->delete();
+                    ->action(
+                        function (
+                            User $record
+                        ): void {
+                            $record
+                                ->tokens()
+                                ->delete();
 
-                        $record->update([
-                            'is_active' => false,
-                        ]);
+                            $record->update([
+                                'is_active' =>
+                                    false,
+                            ]);
 
-                        Notification::make()
-                            ->success()
-                            ->title('Akun warga dinonaktifkan')
-                            ->body(
-                                'Seluruh token login mobile warga telah dicabut.'
-                            )
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->success()
+                                ->title(
+                                    'Akun warga dinonaktifkan'
+                                )
+                                ->body(
+                                    'Seluruh token login mobile warga telah dicabut.'
+                                )
+                                ->send();
+                        }
+                    ),
 
                 /*
                  * RESET PASSWORD
                  */
-                Action::make('resetPassword')
-                    ->label('Reset password')
-                    ->icon('heroicon-o-key')
+                Action::make(
+                    'resetPassword'
+                )
+                    ->label(
+                        'Reset password'
+                    )
+                    ->icon(
+                        'heroicon-o-key'
+                    )
                     ->color('warning')
                     ->schema([
-                        TextInput::make('password')
-                            ->label('Password baru')
+                        TextInput::make(
+                            'password'
+                        )
+                            ->label(
+                                'Password baru'
+                            )
                             ->password()
                             ->revealable()
                             ->confirmed()
@@ -287,24 +466,34 @@ final class WargaTable
                             ->maxLength(255)
                             ->required(),
 
-                        TextInput::make('password_confirmation')
-                            ->label('Konfirmasi password baru')
+                        TextInput::make(
+                            'password_confirmation'
+                        )
+                            ->label(
+                                'Konfirmasi password baru'
+                            )
                             ->password()
                             ->revealable()
                             ->dehydrated(false)
                             ->required(),
                     ])
-                    ->modalSubmitActionLabel('Simpan password')
+                    ->modalSubmitActionLabel(
+                        'Simpan password'
+                    )
                     ->action(
                         function (
                             User $record,
                             array $data
                         ): void {
-                            $record->tokens()->delete();
+                            $record
+                                ->tokens()
+                                ->delete();
 
                             $record->update([
                                 'password' =>
-                                    $data['password'],
+                                    $data[
+                                        'password'
+                                    ],
                             ]);
 
                             Notification::make()

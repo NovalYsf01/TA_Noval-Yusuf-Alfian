@@ -2,7 +2,6 @@ import '../core/network/api_client.dart';
 import '../models/laporan_darurat_model.dart';
 import 'laporan_darurat_service.dart';
 
-/// Implementasi API nyata untuk laporan keadaan darurat.
 class ApiLaporanDaruratService implements LaporanDaruratService {
   ApiLaporanDaruratService._internal();
 
@@ -29,62 +28,108 @@ class ApiLaporanDaruratService implements LaporanDaruratService {
 
       final rawData = response['data'];
 
-      if (rawData is! Map<String, dynamic>) {
+      if (rawData is! Map) {
         return const LaporanResult(
           success: false,
           message: 'Format respons server tidak valid.',
         );
       }
 
-      final rawEmergencyType = rawData['emergency_type'];
+      final data = Map<String, dynamic>.from(rawData);
 
-      String emergencyCode = emergencyType.apiValue;
+      final item = LaporanDaruratModel.fromJson(data);
 
-      if (rawEmergencyType is Map) {
-        final rawCode = rawEmergencyType['code'];
-        if (rawCode != null) {
-          emergencyCode = rawCode.toString();
-        }
+      return LaporanResult(
+        success: true,
+        item: item,
+        message:
+            response['message']?.toString() ??
+            'Laporan darurat berhasil dikirim.',
+      );
+    } on ApiException catch (e) {
+      return LaporanResult(success: false, message: e.message);
+    } catch (_) {
+      return const LaporanResult(
+        success: false,
+        message: 'Terjadi kesalahan saat mengirim laporan darurat.',
+      );
+    }
+  }
+
+  @override
+  Future<LaporanListResult> getMyReports({
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    try {
+      final response = await _api.get(
+        '/laporan-darurat',
+        queryParams: {'page': page.toString(), 'per_page': perPage.toString()},
+      );
+
+      final rawData = response['data'];
+
+      if (rawData is! List) {
+        return const LaporanListResult(
+          success: false,
+          message: 'Format riwayat laporan dari server tidak valid.',
+        );
       }
 
-      final rawId = rawData['id'];
+      final items = rawData
+          .whereType<Map>()
+          .map(
+            (item) =>
+                LaporanDaruratModel.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
 
-      final int id = rawId is int
-          ? rawId
-          : int.tryParse(rawId?.toString() ?? '') ?? 0;
+      return LaporanListResult(
+        success: true,
+        items: items,
+        message:
+            response['message']?.toString() ??
+            'Riwayat laporan berhasil dimuat.',
+      );
+    } on ApiException catch (e) {
+      return LaporanListResult(success: false, message: e.message);
+    } catch (_) {
+      return const LaporanListResult(
+        success: false,
+        message: 'Terjadi kesalahan saat memuat riwayat laporan.',
+      );
+    }
+  }
 
-      final reportedAt =
-          DateTime.tryParse(rawData['reported_at']?.toString() ?? '') ??
-              DateTime.now();
+  @override
+  Future<LaporanResult> getDetail(int id) async {
+    try {
+      final response = await _api.get('/laporan-darurat/$id');
 
-      final item = LaporanDaruratModel(
-        id: id,
-        emergencyType:
-            EmergencyType.fromBackendCode(emergencyCode),
-        description:
-            rawData['description']?.toString() ?? description.trim(),
-        reportedAt: reportedAt,
+      final rawData = response['data'];
 
-        // Hanya untuk kompatibilitas model Flutter lama.
-        // Backend laporan darurat tidak memiliki workflow status.
-        status: 'diterima',
+      if (rawData is! Map) {
+        return const LaporanResult(
+          success: false,
+          message: 'Format detail laporan dari server tidak valid.',
+        );
+      }
+
+      final item = LaporanDaruratModel.fromJson(
+        Map<String, dynamic>.from(rawData),
       );
 
       return LaporanResult(
         success: true,
         item: item,
-        message: response['message']?.toString() ??
-            'Laporan darurat berhasil dikirim.',
+        message: response['message']?.toString(),
       );
     } on ApiException catch (e) {
-      return LaporanResult(
-        success: false,
-        message: e.message,
-      );
+      return LaporanResult(success: false, message: e.message);
     } catch (_) {
       return const LaporanResult(
         success: false,
-        message: 'Terjadi kesalahan saat mengirim laporan darurat.',
+        message: 'Terjadi kesalahan saat memuat detail laporan.',
       );
     }
   }

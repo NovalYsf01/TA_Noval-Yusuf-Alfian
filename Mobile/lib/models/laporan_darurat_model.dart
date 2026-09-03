@@ -1,21 +1,4 @@
-/// Tipe laporan darurat
-///
-/// Nilai enum Dart menggunakan Bahasa Indonesia untuk keterbacaan kode.
-/// Label UI tetap Bahasa Indonesia.
-/// apiValue disesuaikan dengan EmergencyType backend (English):
-///
-///   Backend value         Flutter enum
-///   ──────────────────────────────────────
-///   fire               → kebakaran
-///   illness_or_accident→ sakitKecelakaan
-///   theft              → pencurian
-///   crime              → tindakKejahatan
-///   death              → kematian
-///   other              → lainnya
-///
-/// Backend mengirim emergency_type sebagai object:
-///   { "code": "fire", "label": "Kebakaran" }
-/// Parsing menggunakan [fromBackendCode] dari field "code".
+/// Jenis keadaan darurat.
 enum EmergencyType {
   kebakaran,
   sakitKecelakaan,
@@ -24,7 +7,6 @@ enum EmergencyType {
   kematian,
   lainnya;
 
-  /// Label Bahasa Indonesia untuk ditampilkan di UI
   String get label {
     switch (this) {
       case EmergencyType.kebakaran:
@@ -42,7 +24,6 @@ enum EmergencyType {
     }
   }
 
-  /// Nilai yang dikirim ke API backend (English, sesuai EmergencyType enum Laravel)
   String get apiValue {
     switch (this) {
       case EmergencyType.kebakaran:
@@ -60,9 +41,6 @@ enum EmergencyType {
     }
   }
 
-  /// Parse dari code backend (English).
-  /// Backend mengirim emergency_type sebagai object { "code": "...", "label": "..." }.
-  /// Gunakan metode ini dengan nilai dari emergency_type["code"].
   static EmergencyType fromBackendCode(String code) {
     switch (code.toLowerCase()) {
       case 'fire':
@@ -75,105 +53,221 @@ enum EmergencyType {
         return EmergencyType.tindakKejahatan;
       case 'death':
         return EmergencyType.kematian;
+      case 'other':
       default:
         return EmergencyType.lainnya;
     }
   }
 
-  /// Parse dari string (untuk kompatibilitas MockService).
-  /// Mendukung nilai English maupun Bahasa Indonesia.
   static EmergencyType fromString(String value) {
     switch (value.toLowerCase()) {
-      // English (backend canonical values)
       case 'fire':
-        return EmergencyType.kebakaran;
-      case 'illness_or_accident':
-        return EmergencyType.sakitKecelakaan;
-      case 'theft':
-        return EmergencyType.pencurian;
-      case 'crime':
-        return EmergencyType.tindakKejahatan;
-      case 'death':
-        return EmergencyType.kematian;
-      case 'other':
-        return EmergencyType.lainnya;
-      // Bahasa Indonesia (nilai internal mock lama — backward compat)
       case 'kebakaran':
         return EmergencyType.kebakaran;
+
+      case 'illness_or_accident':
       case 'sakit_kecelakaan':
         return EmergencyType.sakitKecelakaan;
+
+      case 'theft':
       case 'pencurian':
         return EmergencyType.pencurian;
+
+      case 'crime':
       case 'tindak_kejahatan':
         return EmergencyType.tindakKejahatan;
+
+      case 'death':
       case 'kematian':
         return EmergencyType.kematian;
+
       default:
         return EmergencyType.lainnya;
     }
   }
 }
 
-/// Model laporan darurat
+/// Model laporan keadaan darurat warga.
 ///
-/// Field mapping vs EmergencyReportResource backend:
-///   id            ← id
-///   emergencyType ← emergency_type.code  (backend kirim object {code, label})
-///   description   ← description
-///   reportedAt    ← reported_at
-///
-/// CATATAN: Backend tidak memiliki field status untuk laporan darurat.
-/// Field [status] dipertahankan hanya untuk kompatibilitas MockService
-/// dan tidak akan diisi dari response API backend.
+/// Nilai status backend:
+/// - waiting     = Menunggu Penanganan
+/// - in_progress = Sedang Ditangani
+/// - resolved    = Selesai
 class LaporanDaruratModel {
   const LaporanDaruratModel({
     required this.id,
     required this.emergencyType,
     required this.description,
     required this.reportedAt,
-    this.status,
+    this.status = 'waiting',
+    this.statusLabel = 'Menunggu Penanganan',
+    this.feedback,
+    this.evidencePhotoPath,
+    this.evidencePhotoUrl,
+    this.handledById,
+    this.handledByName,
+    this.handledAt,
+    this.resolvedAt,
+    this.archivedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   final int id;
   final EmergencyType emergencyType;
   final String description;
-  final DateTime reportedAt;
 
-  /// Status internal — HANYA digunakan oleh MockService.
-  /// Backend tidak mengirim field ini; nilai dari API selalu null.
-  /// Jangan diisi atau dibaca dari response backend.
-  final String? status;
+  /// Canonical status code dari backend.
+  final String status;
+
+  /// Label Bahasa Indonesia dari backend.
+  final String statusLabel;
+
+  /// Feedback / catatan penanganan dari Pengurus RT.
+  final String? feedback;
+
+  /// Path internal file pada storage Laravel.
+  final String? evidencePhotoPath;
+
+  /// URL foto bukti yang dapat ditampilkan mobile.
+  final String? evidencePhotoUrl;
+
+  /// Pengurus RT yang menangani laporan.
+  final int? handledById;
+  final String? handledByName;
+
+  final DateTime? handledAt;
+  final DateTime? resolvedAt;
+  final DateTime? archivedAt;
+
+  final DateTime reportedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  bool get isWaiting => status == 'waiting';
+
+  bool get isInProgress => status == 'in_progress';
+
+  bool get isResolved => status == 'resolved';
+
+  bool get isArchived => archivedAt != null;
+
+  bool get hasFeedback => feedback != null && feedback!.trim().isNotEmpty;
+
+  bool get hasEvidencePhoto =>
+      evidencePhotoUrl != null && evidencePhotoUrl!.trim().isNotEmpty;
 
   factory LaporanDaruratModel.fromJson(Map<String, dynamic> json) {
-    // Backend mengirim emergency_type sebagai object: { "code": "...", "label": "..." }
-    final typeRaw = json['emergency_type'];
-    final EmergencyType emergencyType;
-    if (typeRaw is Map<String, dynamic>) {
-      emergencyType = EmergencyType.fromBackendCode(
-          typeRaw['code'] as String? ?? 'other');
-    } else if (typeRaw is String) {
-      // Fallback jika string langsung
-      emergencyType = EmergencyType.fromString(typeRaw);
-    } else {
-      emergencyType = EmergencyType.lainnya;
+    final rawEmergencyType = json['emergency_type'];
+
+    String emergencyCode = 'other';
+
+    if (rawEmergencyType is Map) {
+      emergencyCode = rawEmergencyType['code']?.toString() ?? 'other';
+    } else if (rawEmergencyType != null) {
+      emergencyCode = rawEmergencyType.toString();
+    }
+
+    final rawStatus = json['status'];
+
+    String statusCode = 'waiting';
+    String statusLabel = 'Menunggu Penanganan';
+
+    if (rawStatus is Map) {
+      statusCode = rawStatus['code']?.toString() ?? 'waiting';
+
+      statusLabel = rawStatus['label']?.toString() ?? _statusLabel(statusCode);
+    } else if (rawStatus != null) {
+      statusCode = rawStatus.toString();
+      statusLabel = _statusLabel(statusCode);
+    }
+
+    final rawHandledBy = json['handled_by'];
+
+    int? handledById;
+    String? handledByName;
+
+    if (rawHandledBy is Map) {
+      handledById = _parseNullableInt(rawHandledBy['id']);
+
+      handledByName = rawHandledBy['name']?.toString();
     }
 
     return LaporanDaruratModel(
-      id: json['id'] as int,
-      emergencyType: emergencyType,
-      description: json['description'] as String,
-      reportedAt: DateTime.parse(json['reported_at'] as String),
-      // status tidak dikirim backend — selalu null dari API
-      status: null,
+      id: _parseInt(json['id']),
+      emergencyType: EmergencyType.fromBackendCode(emergencyCode),
+      description: json['description']?.toString() ?? '',
+      status: statusCode,
+      statusLabel: statusLabel,
+      feedback: _nullableString(json['feedback']),
+      evidencePhotoPath: _nullableString(json['evidence_photo_path']),
+      evidencePhotoUrl: _nullableString(json['evidence_photo_url']),
+      handledById: handledById,
+      handledByName: handledByName,
+      handledAt: _parseDateTime(json['handled_at']),
+      resolvedAt: _parseDateTime(json['resolved_at']),
+      archivedAt: _parseDateTime(json['archived_at']),
+      reportedAt: _parseDateTime(json['reported_at']) ?? DateTime.now(),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'emergency_type': emergencyType.apiValue,
-      'description': description,
-      'reported_at': reportedAt.toIso8601String(),
-    };
+  static String _statusLabel(String code) {
+    switch (code) {
+      case 'in_progress':
+        return 'Sedang Ditangani';
+
+      case 'resolved':
+        return 'Selesai';
+
+      case 'waiting':
+      default:
+        return 'Menunggu Penanganan';
+    }
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static int? _parseNullableInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    return int.tryParse(value.toString());
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final raw = value.toString();
+
+    if (raw.trim().isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(raw);
+  }
+
+  static String? _nullableString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final result = value.toString().trim();
+
+    return result.isEmpty ? null : result;
   }
 }

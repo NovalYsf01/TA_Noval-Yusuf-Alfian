@@ -7,6 +7,7 @@ namespace App\Filament\Admin\Resources\ServiceRequests\Actions;
 use App\Enums\ServiceRequestStatus;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Services\FirebaseNotificationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
@@ -26,9 +27,14 @@ final class ServiceRequestActions
             ->color('info')
             ->requiresConfirmation()
             ->modalHeading('Proses permohonan pelayanan?')
-            ->modalDescription('Status akan berubah menjadi Diproses dan warga dapat melihat perubahan ini di aplikasi mobile.')
+            ->modalDescription(
+                'Status akan berubah menjadi Diproses dan warga akan menerima notifikasi.'
+            )
             ->modalSubmitActionLabel('Ya, proses')
-            ->visible(fn (ServiceRequest $record): bool => $record->status === ServiceRequestStatus::PENDING_VERIFICATION)
+            ->visible(
+                fn (ServiceRequest $record): bool =>
+                    $record->status === ServiceRequestStatus::PENDING_VERIFICATION
+            )
             ->action(function (ServiceRequest $record): void {
                 self::transition(
                     record: $record,
@@ -39,7 +45,10 @@ final class ServiceRequestActions
                     ],
                 );
 
-                self::success('Permohonan mulai diproses', 'Status pelayanan berhasil diubah menjadi Diproses.');
+                self::success(
+                    'Permohonan mulai diproses',
+                    'Status pelayanan berhasil diubah menjadi Diproses.',
+                );
             });
     }
 
@@ -52,14 +61,19 @@ final class ServiceRequestActions
             ->schema([
                 Textarea::make('admin_note')
                     ->label('Alasan penolakan')
-                    ->helperText('Alasan ini akan ditampilkan kepada warga di aplikasi mobile.')
+                    ->helperText(
+                        'Alasan ini akan ditampilkan kepada warga di aplikasi mobile.'
+                    )
                     ->required()
                     ->rows(4)
                     ->maxLength(2000),
             ])
             ->modalHeading('Tolak permohonan pelayanan')
             ->modalSubmitActionLabel('Tolak permohonan')
-            ->visible(fn (ServiceRequest $record): bool => $record->status === ServiceRequestStatus::PENDING_VERIFICATION)
+            ->visible(
+                fn (ServiceRequest $record): bool =>
+                    $record->status === ServiceRequestStatus::PENDING_VERIFICATION
+            )
             ->action(function (ServiceRequest $record, array $data): void {
                 $note = trim((string) $data['admin_note']);
 
@@ -74,7 +88,10 @@ final class ServiceRequestActions
                     historyNote: $note,
                 );
 
-                self::success('Permohonan ditolak', 'Alasan penolakan tersimpan dan dapat dilihat oleh warga.');
+                self::success(
+                    'Permohonan ditolak',
+                    'Alasan penolakan tersimpan dan dapat dilihat oleh warga.',
+                );
             });
     }
 
@@ -87,25 +104,34 @@ final class ServiceRequestActions
             ->schema([
                 FileUpload::make('result_document_path')
                     ->label('Dokumen hasil pelayanan')
-                    ->helperText('Wajib PDF, maksimal 5 MB. File disimpan secara privat.')
+                    ->helperText('Wajib PDF, maksimal 5 MB.')
                     ->disk('local')
                     ->directory('service-requests/results')
                     ->visibility('private')
-                    ->acceptedFileTypes(['application/pdf'])
+                    ->acceptedFileTypes([
+                        'application/pdf',
+                    ])
                     ->maxSize(5120)
                     ->preventFilePathTampering()
                     ->required(),
+
                 Textarea::make('admin_note')
                     ->label('Catatan untuk warga')
                     ->rows(3)
                     ->maxLength(2000),
             ])
             ->modalHeading('Selesaikan permohonan pelayanan')
-            ->modalDescription('Unggah PDF final yang nantinya dapat diunduh warga melalui aplikasi mobile.')
+            ->modalDescription(
+                'Unggah PDF final yang nantinya dapat diunduh warga melalui aplikasi mobile.'
+            )
             ->modalSubmitActionLabel('Simpan dan selesaikan')
-            ->visible(fn (ServiceRequest $record): bool => $record->status === ServiceRequestStatus::PROCESSING)
+            ->visible(
+                fn (ServiceRequest $record): bool =>
+                    $record->status === ServiceRequestStatus::PROCESSING
+            )
             ->action(function (ServiceRequest $record, array $data): void {
                 $resultDocumentPath = (string) $data['result_document_path'];
+
                 $note = filled($data['admin_note'] ?? null)
                     ? trim((string) $data['admin_note'])
                     : $record->admin_note;
@@ -120,7 +146,9 @@ final class ServiceRequestActions
                             'processed_by' => auth()->id(),
                             'completed_at' => now(),
                         ],
-                        historyNote: filled($data['admin_note'] ?? null) ? trim((string) $data['admin_note']) : null,
+                        historyNote: filled($data['admin_note'] ?? null)
+                            ? trim((string) $data['admin_note'])
+                            : null,
                     );
                 } catch (Throwable $exception) {
                     Storage::disk('local')->delete($resultDocumentPath);
@@ -128,7 +156,10 @@ final class ServiceRequestActions
                     throw $exception;
                 }
 
-                self::success('Permohonan selesai', 'PDF hasil pelayanan tersimpan dan siap diunduh warga.');
+                self::success(
+                    'Permohonan selesai',
+                    'PDF hasil pelayanan tersimpan dan siap diunduh warga.',
+                );
             });
     }
 
@@ -138,17 +169,25 @@ final class ServiceRequestActions
             ->label('Unduh lampiran warga')
             ->icon('heroicon-o-arrow-down-tray')
             ->color('gray')
-            ->visible(fn (ServiceRequest $record): bool => filled($record->attachment_path))
+            ->visible(
+                fn (ServiceRequest $record): bool =>
+                    filled($record->attachment_path)
+            )
             ->action(function (ServiceRequest $record) {
                 abort_unless(
-                    filled($record->attachment_path) && Storage::disk('local')->exists($record->attachment_path),
+                    filled($record->attachment_path)
+                    && Storage::disk('local')->exists($record->attachment_path),
                     404,
                     'Lampiran tidak ditemukan.',
                 );
 
                 return Storage::disk('local')->download(
                     $record->attachment_path,
-                    "lampiran-{$record->request_number}.".pathinfo($record->attachment_path, PATHINFO_EXTENSION),
+                    'lampiran-'.$record->request_number.'.'.
+                    pathinfo(
+                        $record->attachment_path,
+                        PATHINFO_EXTENSION
+                    ),
                 );
             });
     }
@@ -159,10 +198,16 @@ final class ServiceRequestActions
             ->label('Unduh PDF hasil')
             ->icon('heroicon-o-document-arrow-down')
             ->color('success')
-            ->visible(fn (ServiceRequest $record): bool => filled($record->result_document_path))
+            ->visible(
+                fn (ServiceRequest $record): bool =>
+                    filled($record->result_document_path)
+            )
             ->action(function (ServiceRequest $record) {
                 abort_unless(
-                    filled($record->result_document_path) && Storage::disk('local')->exists($record->result_document_path),
+                    filled($record->result_document_path)
+                    && Storage::disk('local')->exists(
+                        $record->result_document_path
+                    ),
                     404,
                     'Dokumen hasil tidak ditemukan.',
                 );
@@ -170,13 +215,17 @@ final class ServiceRequestActions
                 return Storage::disk('local')->download(
                     $record->result_document_path,
                     "hasil-{$record->request_number}.pdf",
-                    ['Content-Type' => 'application/pdf'],
+                    [
+                        'Content-Type' => 'application/pdf',
+                    ],
                 );
             });
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * Mengubah status permohonan,
+     * menyimpan history,
+     * lalu mengirim push notification.
      */
     private static function transition(
         ServiceRequest $record,
@@ -184,7 +233,12 @@ final class ServiceRequestActions
         array $attributes,
         ?string $historyNote = null,
     ): void {
-        DB::transaction(function () use ($record, $nextStatus, $attributes, $historyNote): void {
+        DB::transaction(function () use (
+            $record,
+            $nextStatus,
+            $attributes,
+            $historyNote
+        ): void {
             /** @var ServiceRequest $lockedRecord */
             $lockedRecord = ServiceRequest::query()
                 ->lockForUpdate()
@@ -192,7 +246,10 @@ final class ServiceRequestActions
 
             if (! $lockedRecord->canTransitionTo($nextStatus)) {
                 throw ValidationException::withMessages([
-                    'status' => "Status {$lockedRecord->status->label()} tidak dapat diubah menjadi {$nextStatus->label()}.",
+                    'status' =>
+                        "Status {$lockedRecord->status->label()} ".
+                        "tidak dapat diubah menjadi ".
+                        "{$nextStatus->label()}.",
                 ]);
             }
 
@@ -214,11 +271,75 @@ final class ServiceRequestActions
             ]);
         });
 
+        /*
+         * Database sudah berhasil disimpan.
+         * Baru kemudian kirim notifikasi.
+         */
         $record->refresh();
+
+        self::sendStatusNotification(
+            record: $record,
+            status: $nextStatus,
+        );
     }
 
-    private static function success(string $title, string $body): void
-    {
+    /**
+     * Kirim push notification ke warga
+     * pemilik permohonan.
+     */
+    private static function sendStatusNotification(
+        ServiceRequest $record,
+        ServiceRequestStatus $status,
+    ): void {
+        try {
+            /** @var User|null $user */
+            $user = $record->user()->first();
+
+            if ($user === null) {
+                return;
+            }
+
+            [$title, $body] = match ($status) {
+                ServiceRequestStatus::PROCESSING => [
+                    'Permohonan Sedang Diproses',
+                    "Permohonan {$record->request_number} sedang diproses oleh Pengurus RT.",
+                ],
+
+                ServiceRequestStatus::REJECTED => [
+                    'Permohonan Ditolak',
+                    "Permohonan {$record->request_number} ditolak. Buka aplikasi untuk melihat alasan penolakan.",
+                ],
+
+                ServiceRequestStatus::COMPLETED => [
+                    'Permohonan Selesai',
+                    "Permohonan {$record->request_number} telah selesai. Dokumen hasil sudah tersedia di aplikasi.",
+                ],
+
+                default => [
+                    'Status Permohonan Diperbarui',
+                    "Status permohonan {$record->request_number} telah diperbarui.",
+                ],
+            };
+
+            app(FirebaseNotificationService::class)
+                ->sendToUser(
+                    user: $user,
+                    title: $title,
+                    body: $body,
+                );
+        } catch (Throwable $exception) {
+            /*
+             * Jika Firebase gagal,
+             * perubahan status tetap tidak dibatalkan.
+             */
+            report($exception);
+        }
+    }
+
+    private static function success(
+        string $title,
+        string $body,
+    ): void {
         Notification::make()
             ->success()
             ->title($title)

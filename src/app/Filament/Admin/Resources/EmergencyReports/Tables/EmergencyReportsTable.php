@@ -7,6 +7,7 @@ namespace App\Filament\Admin\Resources\EmergencyReports\Tables;
 use App\Enums\EmergencyReportStatus;
 use App\Enums\EmergencyType;
 use App\Models\EmergencyReport;
+use App\Services\FirebaseNotificationService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
@@ -19,6 +20,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 final class EmergencyReportsTable
 {
@@ -152,9 +154,7 @@ final class EmergencyReportsTable
             ->recordActions([
                 ViewAction::make()
                     ->label('Lihat')
-                    ->icon(
-                        'heroicon-o-eye'
-                    ),
+                    ->icon('heroicon-o-eye'),
 
                 /*
                  * MULAI PENANGANAN
@@ -204,20 +204,24 @@ final class EmergencyReportsTable
                                     null,
                             ]);
 
+                            self::sendEmergencyUpdate(
+                                $record
+                            );
+
                             Notification::make()
                                 ->success()
                                 ->title(
                                     'Penanganan dimulai'
                                 )
                                 ->body(
-                                    'Status laporan menjadi Sedang Ditangani.'
+                                    'Status menjadi Sedang Ditangani dan pembaruan dikirim kepada warga.'
                                 )
                                 ->send();
                         }
                     ),
 
                 /*
-                 * FEEDBACK DAN FOTO BUKTI
+                 * FEEDBACK / CATATAN PENANGANAN
                  */
                 Action::make('updateHandling')
                     ->label('Feedback')
@@ -248,9 +252,7 @@ final class EmergencyReportsTable
                             ->directory(
                                 'emergency-evidence'
                             )
-                            ->visibility(
-                                'public'
-                            )
+                            ->visibility('public')
                             ->maxSize(4096)
                             ->acceptedFileTypes([
                                 'image/jpeg',
@@ -266,7 +268,8 @@ final class EmergencyReportsTable
                                 $record->feedback,
 
                             'evidence_photo_path' =>
-                                $record->evidence_photo_path,
+                                $record
+                                    ->evidence_photo_path,
                         ]
                     )
                     ->modalHeading(
@@ -335,13 +338,17 @@ final class EmergencyReportsTable
                                     ?? now(),
                             ]);
 
+                            self::sendEmergencyUpdate(
+                                $record
+                            );
+
                             Notification::make()
                                 ->success()
                                 ->title(
                                     'Feedback diperbarui'
                                 )
                                 ->body(
-                                    'Catatan penanganan laporan darurat berhasil disimpan.'
+                                    'Feedback disimpan dan pembaruan dikirim kepada warga.'
                                 )
                                 ->send();
                         }
@@ -379,9 +386,7 @@ final class EmergencyReportsTable
                             ->directory(
                                 'emergency-evidence'
                             )
-                            ->visibility(
-                                'public'
-                            )
+                            ->visibility('public')
                             ->maxSize(4096)
                             ->acceptedFileTypes([
                                 'image/jpeg',
@@ -397,14 +402,15 @@ final class EmergencyReportsTable
                                 $record->feedback,
 
                             'evidence_photo_path' =>
-                                $record->evidence_photo_path,
+                                $record
+                                    ->evidence_photo_path,
                         ]
                     )
                     ->modalHeading(
                         'Selesaikan Laporan Darurat'
                     )
                     ->modalDescription(
-                        'Pastikan feedback akhir sudah menjelaskan hasil penanganan.'
+                        'Pastikan feedback akhir menjelaskan hasil penanganan.'
                     )
                     ->modalSubmitActionLabel(
                         'Tandai Selesai'
@@ -469,13 +475,17 @@ final class EmergencyReportsTable
                                     now(),
                             ]);
 
+                            self::sendEmergencyUpdate(
+                                $record
+                            );
+
                             Notification::make()
                                 ->success()
                                 ->title(
                                     'Laporan selesai'
                                 )
                                 ->body(
-                                    'Laporan darurat telah ditandai selesai.'
+                                    'Laporan ditandai selesai dan pemberitahuan dikirim kepada warga.'
                                 )
                                 ->send();
                         }
@@ -483,6 +493,9 @@ final class EmergencyReportsTable
 
                 /*
                  * ARSIPKAN
+                 *
+                 * Arsip tidak mengirim FCM karena hanya
+                 * pengelolaan histori internal admin.
                  */
                 Action::make('archive')
                     ->label('Arsipkan')
@@ -495,7 +508,7 @@ final class EmergencyReportsTable
                         'Arsipkan Laporan'
                     )
                     ->modalDescription(
-                        'Laporan tetap tersimpan sebagai histori dan dapat dilihat melalui filter Arsip.'
+                        'Laporan tetap tersimpan sebagai histori dan dapat dilihat kembali melalui filter Arsip.'
                     )
                     ->modalSubmitActionLabel(
                         'Ya, Arsipkan'
@@ -530,7 +543,7 @@ final class EmergencyReportsTable
                     ),
 
                 /*
-                 * KEMBALIKAN DARI ARSIP
+                 * KELUARKAN DARI ARSIP
                  */
                 Action::make('unarchive')
                     ->label(
@@ -575,6 +588,38 @@ final class EmergencyReportsTable
             )
             ->poll('15s')
             ->striped();
+    }
+
+    /**
+     * Mengirim update status / feedback
+     * laporan darurat kepada seluruh warga aktif
+     * dan terverifikasi.
+     */
+    private static function sendEmergencyUpdate(
+        EmergencyReport $record
+    ): void {
+        try {
+            /** @var FirebaseNotificationService $firebase */
+            $firebase = app(
+                FirebaseNotificationService::class
+            );
+
+            $freshRecord =
+                $record->fresh([
+                    'user',
+                ]);
+
+            $firebase
+                ->sendEmergencyUpdateToResidents(
+                    $freshRecord ?? $record
+                );
+        } catch (Throwable $exception) {
+            /*
+             * Perubahan status dan feedback tetap
+             * tersimpan walaupun FCM gagal.
+             */
+            report($exception);
+        }
     }
 
     /**

@@ -1,67 +1,45 @@
-import '../core/constants/app_config.dart';
 import '../models/user_model.dart';
 import 'api_profile_service.dart';
 import 'auth_service.dart';
 
-/// Hasil operasi profile
 class ProfileResult {
-  const ProfileResult({
-    required this.success,
-    this.user,
-    this.message,
-  });
+  const ProfileResult({required this.success, this.user, this.message});
 
   final bool success;
   final UserModel? user;
   final String? message;
 }
 
-/// Service profil untuk aplikasi WARGA 20
+/// Service profil warga.
 ///
-/// Fase 3: menggunakan [ApiProfileService] (real API ke Laravel).
-///
-/// Endpoint:
-///   GET   [AppConfig.apiBaseUrl]/profile  → getProfile()
-///   PATCH [AppConfig.apiBaseUrl]/profile  → updateContact() / changePassword()
-///
-/// Authentication: Bearer Token via [ApiClient] (sudah otomatis).
+/// Endpoint real API:
+/// GET   /profile
+/// PATCH /profile
+/// POST  /profile/avatar
 abstract class ProfileService {
-  /// Ambil data profil user yang sedang login
   Future<ProfileResult> getProfile();
 
-  /// Update nomor telepon dan email (PATCH /profile)
-  ///
-  /// Hanya mengirim [phone] dan [email]. Field lain (name, username, dll.)
-  /// tidak dikirim dan tidak dapat diubah dari mobile.
-  Future<ProfileResult> updateContact({
-    required String phone,
+  Future<ProfileResult> updateProfile({
+    required String name,
+    required String username,
     required String email,
+    required String phone,
   });
 
-  /// Ganti password (PATCH /profile)
-  ///
-  /// Backend membutuhkan ketiga field berikut:
-  ///   current_password, password, password_confirmation
   Future<ProfileResult> changePassword({
     required String currentPassword,
     required String newPassword,
     required String passwordConfirmation,
   });
 
-  /// Factory constructor
-  ///
-  /// Profile SELALU menggunakan [ApiProfileService] (real API ke Laravel).
-  /// Fitur lain (Pelayanan, Informasi, dll.) menggunakan [AppConfig.useMockData].
+  Future<ProfileResult> updateAvatar({required String filePath});
+
   factory ProfileService() {
     return ApiProfileService.instance;
   }
 }
 
-/// Mock implementation — dipertahankan untuk referensi dan development offline.
-///
-/// Tidak lagi digunakan sebagai data source aktif sejak Fase 3.
-/// MockAuthService masih ada di [auth_service.dart] dan masih bisa diakses
-/// jika diperlukan untuk testing.
+/// Mock implementation dipertahankan untuk development offline.
 class MockProfileService implements ProfileService {
   MockProfileService._internal();
 
@@ -70,38 +48,56 @@ class MockProfileService implements ProfileService {
   // ignore: unused_element
   static MockProfileService get instance => _instance;
 
-  /// Referensi ke singleton MockAuthService untuk sinkronisasi user session
-  final _authService = MockAuthService.instance;
+  final MockAuthService _authService = MockAuthService.instance;
 
   @override
   Future<ProfileResult> getProfile() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    final user = await _authService.getCurrentUser();
-    if (user != null) {
-      return ProfileResult(success: true, user: user);
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final UserModel? user = await _authService.getCurrentUser();
+
+    if (user == null) {
+      return const ProfileResult(
+        success: false,
+        message: 'Gagal memuat profil.',
+      );
     }
-    return const ProfileResult(
-      success: false,
-      message: 'Gagal memuat profil',
+
+    return ProfileResult(
+      success: true,
+      user: user,
+      message: 'Profil berhasil dimuat.',
     );
   }
 
   @override
-  Future<ProfileResult> updateContact({
-    required String phone,
+  Future<ProfileResult> updateProfile({
+    required String name,
+    required String username,
     required String email,
+    required String phone,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    final user = await _authService.getCurrentUser();
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    final UserModel? user = await _authService.getCurrentUser();
+
     if (user == null) {
-      return const ProfileResult(success: false, message: 'Sesi tidak valid');
+      return const ProfileResult(success: false, message: 'Sesi tidak valid.');
     }
-    final updated = user.copyWith(phone: phone, email: email);
+
+    final UserModel updated = user.copyWith(
+      name: name,
+      username: username,
+      email: email,
+      phone: phone,
+    );
+
     await _authService.updateCurrentUser(updated);
+
     return ProfileResult(
       success: true,
       user: updated,
-      message: 'Kontak berhasil diperbarui',
+      message: 'Profil berhasil diperbarui.',
     );
   }
 
@@ -109,22 +105,49 @@ class MockProfileService implements ProfileService {
   Future<ProfileResult> changePassword({
     required String currentPassword,
     required String newPassword,
-    required String passwordConfirmation, // diterima tapi tidak divalidasi di mock
+    required String passwordConfirmation,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    final ok = await _authService.verifyAndChangePassword(
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (newPassword != passwordConfirmation) {
+      return const ProfileResult(
+        success: false,
+        message: 'Konfirmasi password baru tidak sesuai.',
+      );
+    }
+
+    final bool success = await _authService.verifyAndChangePassword(
       currentPassword: currentPassword,
       newPassword: newPassword,
     );
-    if (!ok) {
+
+    if (!success) {
       return const ProfileResult(
         success: false,
-        message: 'Password lama tidak sesuai',
+        message: 'Password saat ini tidak sesuai.',
       );
     }
+
     return const ProfileResult(
       success: true,
-      message: 'Password berhasil diperbarui',
+      message: 'Password berhasil diperbarui.',
+    );
+  }
+
+  @override
+  Future<ProfileResult> updateAvatar({required String filePath}) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final UserModel? user = await _authService.getCurrentUser();
+
+    if (user == null) {
+      return const ProfileResult(success: false, message: 'Sesi tidak valid.');
+    }
+
+    return ProfileResult(
+      success: true,
+      user: user,
+      message: 'Foto profil berhasil diperbarui.',
     );
   }
 }

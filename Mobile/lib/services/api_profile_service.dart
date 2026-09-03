@@ -1,48 +1,57 @@
 import '../core/network/api_client.dart';
 import '../models/user_model.dart';
+import 'auth_service.dart';
 import 'profile_service.dart';
 
-/// Implementasi [ProfileService] yang menggunakan API Laravel.
+/// Implementasi ProfileService menggunakan Laravel API.
 ///
-/// Endpoint yang digunakan:
-///   GET   /profile  → ambil data profil warga
-///   PATCH /profile  → update kontak (phone, email) atau ganti password
+/// Endpoint:
+/// GET   /profile
+/// PATCH /profile
+/// POST  /profile/avatar
 ///
-/// Aturan keamanan:
-/// - Hanya mengirim field yang diizinkan warga ubah (phone, email, password).
-/// - TIDAK mengirim: name, username, house_code, address, role, is_active, avatar_url.
-/// - Token Bearer disertakan otomatis oleh [ApiClient].
+/// Field yang boleh warga ubah:
+/// - name
+/// - username
+/// - email
+/// - phone
+/// - password
+/// - avatar
 ///
-/// Singleton – gunakan [ApiProfileService.instance].
+/// Field yang tidak dikirim dari mobile:
+/// - house_code
+/// - address
+/// - role
+/// - verification_status
+/// - is_active
 class ApiProfileService implements ProfileService {
   ApiProfileService._internal();
 
   static final ApiProfileService _instance = ApiProfileService._internal();
 
-  /// Singleton instance
   static ApiProfileService get instance => _instance;
 
-  final _api = ApiClient.instance;
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // ProfileService implementation
-  // ─────────────────────────────────────────────────────────────────────────
+  final ApiClient _api = ApiClient.instance;
+  final AuthService _authService = AuthService();
 
   @override
   Future<ProfileResult> getProfile() async {
     try {
-      final body = await _api.get('/profile');
+      final Map<String, dynamic> body = await _api.get('/profile');
 
-      // Response wrapper: { success, message, data: { ...user fields... } }
-      final data = body['data'] as Map<String, dynamic>?;
+      final Map<String, dynamic>? data = body['data'] as Map<String, dynamic>?;
+
       if (data == null) {
         return const ProfileResult(
           success: false,
-          message: 'Respons profil tidak valid dari server.',
+          message: 'Respons profil dari server tidak valid.',
         );
       }
 
-      final user = UserModel.fromJson(data);
+      final UserModel user = UserModel.fromJson(data);
+
+      await _authService.updateCurrentUser(user);
+
       return ProfileResult(
         success: true,
         user: user,
@@ -59,28 +68,33 @@ class ApiProfileService implements ProfileService {
   }
 
   @override
-  Future<ProfileResult> updateContact({
-    required String phone,
+  Future<ProfileResult> updateProfile({
+    required String name,
+    required String username,
     required String email,
+    required String phone,
   }) async {
     try {
-      // Hanya kirim field yang diizinkan warga ubah
-      final body = await _api.patch(
+      final Map<String, dynamic> body = await _api.patch(
         '/profile',
         body: {
-          'phone': phone,
-          'email': email,
+          'name': name.trim(),
+          'username': username.trim().toLowerCase(),
+          'email': email.trim().toLowerCase(),
+          'phone': phone.trim(),
         },
       );
 
-      // Setelah PATCH berhasil, fetch ulang data terbaru via GET /profile
-      return await _fetchAfterUpdate(body);
+      return await _resultFromResponse(
+        body,
+        fallbackMessage: 'Profil berhasil diperbarui.',
+      );
     } on ApiException catch (e) {
       return ProfileResult(success: false, message: e.message);
     } catch (_) {
       return const ProfileResult(
         success: false,
-        message: 'Terjadi kesalahan saat menyimpan perubahan.',
+        message: 'Terjadi kesalahan saat menyimpan profil.',
       );
     }
   }
@@ -92,8 +106,7 @@ class ApiProfileService implements ProfileService {
     required String passwordConfirmation,
   }) async {
     try {
-      // Kirim ke PATCH /profile sesuai kontrak backend
-      final body = await _api.patch(
+      final Map<String, dynamic> body = await _api.patch(
         '/profile',
         body: {
           'current_password': currentPassword,
@@ -116,41 +129,65 @@ class ApiProfileService implements ProfileService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Internal helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  @override
+  Future<ProfileResult> updateAvatar({required String filePath}) async {
+    try {
+      final Map<String, dynamic> body = await _api.postMultipart(
+        '/profile/avatar',
+        fileField: 'avatar',
+        filePath: filePath,
+      );
 
-  /// Setelah PATCH sukses, ambil user terbaru dari response atau GET /profile.
-  Future<ProfileResult> _fetchAfterUpdate(Map<String, dynamic> patchBody) async {
-    // Coba ambil user dari response PATCH langsung
-    final data = patchBody['data'] as Map<String, dynamic>?;
+      return await _resultFromResponse(
+        body,
+        fallbackMessage: 'Foto profil berhasil diperbarui.',
+      );
+    } on ApiException catch (e) {
+      return ProfileResult(success: false, message: e.message);
+    } catch (_) {
+      return const ProfileResult(
+        success: false,
+        message: 'Terjadi kesalahan saat mengunggah foto profil.',
+      );
+    }
+  }
+
+  Future<ProfileResult> _resultFromResponse(
+    Map<String, dynamic> body, {
+    required String fallbackMessage,
+  }) async {
+    final Map<String, dynamic>? data = body['data'] as Map<String, dynamic>?;
+
     if (data != null) {
       try {
-        final user = UserModel.fromJson(data);
+        final UserModel user = UserModel.fromJson(data);
+
+        await _authService.updateCurrentUser(user);
+
         return ProfileResult(
           success: true,
           user: user,
-          message: patchBody['message'] as String? ?? 'Perubahan berhasil disimpan.',
+          message: body['message'] as String? ?? fallbackMessage,
         );
       } catch (_) {
-        // Response data tidak bisa di-parse sebagai user — fallback ke GET
+        // Jika data user gagal diparsing,
+        // profil akan diambil ulang dari API.
       }
     }
 
-    // Fallback: GET /profile untuk data terbaru
-    return getProfile().then((result) {
-      if (result.success) {
-        return ProfileResult(
-          success: true,
-          user: result.user,
-          message: patchBody['message'] as String? ?? 'Perubahan berhasil disimpan.',
-        );
-      }
-      // Jika GET juga gagal, tetap anggap PATCH berhasil tapi tanpa user baru
+    final ProfileResult refreshed = await getProfile();
+
+    if (refreshed.success) {
       return ProfileResult(
         success: true,
-        message: patchBody['message'] as String? ?? 'Perubahan berhasil disimpan.',
+        user: refreshed.user,
+        message: body['message'] as String? ?? fallbackMessage,
       );
-    });
+    }
+
+    return ProfileResult(
+      success: true,
+      message: body['message'] as String? ?? fallbackMessage,
+    );
   }
 }

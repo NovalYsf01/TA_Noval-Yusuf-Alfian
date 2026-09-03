@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text_field.dart';
-import '../../services/auth_service.dart';
 import '../../navigation/main_navigation.dart';
+import '../../services/auth_service.dart';
+import 'register_screen.dart';
 
 /// M-02 Login Screen
 ///
-/// Login dengan username + password.
-/// Tidak ada fitur Register / Sign Up / Buat Akun.
-/// Akun warga dibuat oleh Ketua RT melalui web.
+/// Login warga menggunakan username dan password.
+///
+/// Warga yang belum memiliki akun dapat melakukan registrasi
+/// melalui aplikasi mobile. Akun yang baru didaftarkan harus
+/// diverifikasi terlebih dahulu oleh Pengurus RT.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,9 +24,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _usernameController = TextEditingController();
+
+  final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -36,19 +42,22 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.15),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+
     _animController.forward();
   }
 
@@ -57,51 +66,77 @@ class _LoginScreenState extends State<LoginScreen>
     _animController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
-    // Clear error
-    setState(() => _errorMessage = null);
+    FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _errorMessage = null;
+    });
 
-    setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final result = await _authService.login(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
     );
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
 
     if (result.success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainNavigation()),
       );
-    } else {
-      setState(() => _errorMessage = result.message ?? AppStrings.errorLogin);
+
+      return;
     }
+
+    setState(() {
+      _errorMessage = result.message ?? AppStrings.errorLogin;
+    });
+  }
+
+  Future<void> _openRegister() async {
+    FocusScope.of(context).unfocus();
+
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: size.height),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header gradient
                 _buildHeader(size),
-                // Form card
+
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: SlideTransition(
@@ -148,7 +183,9 @@ class _LoginScreenState extends State<LoginScreen>
                 color: AppColors.white,
               ),
             ),
+
             const SizedBox(height: 16),
+
             const Text(
               AppStrings.appName,
               style: TextStyle(
@@ -158,7 +195,9 @@ class _LoginScreenState extends State<LoginScreen>
                 letterSpacing: 2,
               ),
             ),
+
             const SizedBox(height: 6),
+
             Text(
               AppStrings.appSubtitle,
               style: TextStyle(
@@ -179,6 +218,7 @@ class _LoginScreenState extends State<LoginScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
+
           const Text(
             'Masuk ke Akun Anda',
             style: TextStyle(
@@ -187,17 +227,16 @@ class _LoginScreenState extends State<LoginScreen>
               color: AppColors.textPrimary,
             ),
           ),
+
           const SizedBox(height: 4),
+
           const Text(
-            'Masukkan username dan password yang diberikan Ketua RT',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
+            'Masukkan username dan password akun warga Anda.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
+
           const SizedBox(height: 28),
 
-          // Form
           Form(
             key: _formKey,
             child: Column(
@@ -208,107 +247,140 @@ class _LoginScreenState extends State<LoginScreen>
                   controller: _usernameController,
                   prefixIcon: Icons.person_outline_rounded,
                   keyboardType: TextInputType.text,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
+                  validator: (String? value) {
+                    if (value == null || value.trim().isEmpty) {
                       return AppStrings.errorUsernameEmpty;
                     }
+
                     return null;
                   },
                 ),
+
                 const SizedBox(height: 16),
+
                 AppTextField(
                   label: AppStrings.password,
                   hint: AppStrings.passwordHint,
                   controller: _passwordController,
                   isPassword: true,
                   prefixIcon: Icons.lock_outline_rounded,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) {
+                  validator: (String? value) {
+                    if (value == null || value.isEmpty) {
                       return AppStrings.errorPasswordEmpty;
                     }
+
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
 
-                // Error message
                 if (_errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.dangerLight,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          color: AppColors.danger,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              color: AppColors.danger,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 16),
+                  _buildErrorMessage(),
                 ],
 
                 const SizedBox(height: 24),
+
                 AppButton(
                   label: AppStrings.login,
                   onPressed: _handleLogin,
                   isLoading: _isLoading,
                 ),
-              ],
-            ),
-          ),
 
-          const SizedBox(height: 24),
+                const SizedBox(height: 14),
 
-          // Info akun
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    AppStrings.loginInfo,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      height: 1.5,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Belum memiliki akun?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
+
+                    TextButton(
+                      onPressed: _isLoading ? null : _openRegister,
+                      child: const Text(
+                        'Daftar',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 20),
+
+          _buildAccountInformation(),
 
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.dangerLight,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.danger,
+            size: 18,
+          ),
+
+          const SizedBox(width: 8),
+
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: const TextStyle(
+                color: AppColors.danger,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountInformation() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
+
+          SizedBox(width: 8),
+
+          Expanded(
+            child: Text(
+              'Belum memiliki akun? Silakan lakukan registrasi melalui aplikasi. '
+              'Setelah mendaftar, akun akan diperiksa dan diverifikasi oleh Pengurus RT.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                height: 1.5,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -14,9 +14,14 @@ use App\Http\Middleware\HandleApiExceptions;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')
-    ->middleware(HandleApiExceptions::class)
+    ->middleware(
+        HandleApiExceptions::class
+    )
     ->group(function (): void {
 
+        /*
+         * AUTH PUBLIC
+         */
         Route::prefix('auth')
             ->group(function (): void {
 
@@ -27,7 +32,9 @@ Route::prefix('v1')
                         'register',
                     ]
                 )
-                    ->middleware('throttle:3,1')
+                    ->middleware(
+                        'throttle:3,1'
+                    )
                     ->name(
                         'api.v1.auth.register'
                     );
@@ -39,12 +46,17 @@ Route::prefix('v1')
                         'login',
                     ]
                 )
-                    ->middleware('throttle:5,1')
+                    ->middleware(
+                        'throttle:5,1'
+                    )
                     ->name(
                         'api.v1.auth.login'
                     );
             });
 
+        /*
+         * ROUTE WARGA LOGIN
+         */
         Route::middleware([
             'auth:sanctum',
             EnsureActiveWarga::class,
@@ -77,6 +89,9 @@ Route::prefix('v1')
                             );
                     });
 
+                /*
+                 * PROFILE
+                 */
                 Route::get(
                     'profile',
                     [
@@ -99,11 +114,30 @@ Route::prefix('v1')
                         'update',
                     ]
                 )
-                    ->middleware('throttle:10,1')
+                    ->middleware(
+                        'throttle:10,1'
+                    )
                     ->name(
                         'api.v1.profile.update'
                     );
 
+                Route::post(
+                    'profile/avatar',
+                    [
+                        ProfileController::class,
+                        'updateAvatar',
+                    ]
+                )
+                    ->middleware(
+                        'throttle:10,1'
+                    )
+                    ->name(
+                        'api.v1.profile.avatar'
+                    );
+
+                /*
+                 * INFORMASI RT
+                 */
                 Route::get(
                     'informasi',
                     [
@@ -122,11 +156,16 @@ Route::prefix('v1')
                         'show',
                     ]
                 )
-                    ->whereNumber('information')
+                    ->whereNumber(
+                        'information'
+                    )
                     ->name(
                         'api.v1.informations.show'
                     );
 
+                /*
+                 * PELAYANAN
+                 */
                 Route::get(
                     'pelayanan',
                     [
@@ -145,7 +184,9 @@ Route::prefix('v1')
                         'store',
                     ]
                 )
-                    ->middleware('throttle:10,1')
+                    ->middleware(
+                        'throttle:10,1'
+                    )
                     ->name(
                         'api.v1.service-requests.store'
                     );
@@ -157,7 +198,9 @@ Route::prefix('v1')
                         'attachment',
                     ]
                 )
-                    ->whereNumber('serviceRequest')
+                    ->whereNumber(
+                        'serviceRequest'
+                    )
                     ->name(
                         'api.v1.service-requests.attachment'
                     );
@@ -169,7 +212,9 @@ Route::prefix('v1')
                         'resultDocument',
                     ]
                 )
-                    ->whereNumber('serviceRequest')
+                    ->whereNumber(
+                        'serviceRequest'
+                    )
                     ->name(
                         'api.v1.service-requests.result-document'
                     );
@@ -181,11 +226,16 @@ Route::prefix('v1')
                         'show',
                     ]
                 )
-                    ->whereNumber('serviceRequest')
+                    ->whereNumber(
+                        'serviceRequest'
+                    )
                     ->name(
                         'api.v1.service-requests.show'
                     );
 
+                /*
+                 * LAPORAN DARURAT
+                 */
                 Route::get(
                     'laporan-darurat',
                     [
@@ -204,7 +254,9 @@ Route::prefix('v1')
                         'store',
                     ]
                 )
-                    ->middleware('throttle:3,1')
+                    ->middleware(
+                        'throttle:3,1'
+                    )
                     ->name(
                         'api.v1.emergency-reports.store'
                     );
@@ -216,11 +268,16 @@ Route::prefix('v1')
                         'show',
                     ]
                 )
-                    ->whereNumber('emergencyReport')
+                    ->whereNumber(
+                        'emergencyReport'
+                    )
                     ->name(
                         'api.v1.emergency-reports.show'
                     );
 
+                /*
+                 * NOMOR PENTING
+                 */
                 Route::get(
                     'nomor-penting',
                     [
@@ -246,6 +303,9 @@ Route::prefix('v1')
                         'api.v1.important-contacts.show'
                     );
 
+                /*
+                 * FCM DEVICE TOKEN
+                 */
                 Route::post(
                     'device-token',
                     [

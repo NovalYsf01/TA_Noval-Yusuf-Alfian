@@ -34,6 +34,10 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
         'phone',
         'password',
         'is_active',
+        'verification_status',
+        'verified_at',
+        'verified_by',
+        'rejection_reason',
     ];
 
     /**
@@ -50,9 +54,13 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
             return Storage::disk('public')->url($this->avatar_url);
         }
 
-        $identity = mb_strtolower(mb_trim((string) ($this->email ?: $this->username)));
+        $identity = mb_strtolower(
+            mb_trim((string) ($this->email ?: $this->username))
+        );
 
-        return 'https://www.gravatar.com/avatar/'.md5($identity).'?d=mp&r=g&s=250';
+        return 'https://www.gravatar.com/avatar/'
+            .md5($identity)
+            .'?d=mp&r=g&s=250';
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -72,12 +80,18 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function serviceRequestStatusChanges(): HasMany
     {
-        return $this->hasMany(ServiceRequestStatusHistory::class, 'changed_by');
+        return $this->hasMany(
+            ServiceRequestStatusHistory::class,
+            'changed_by'
+        );
     }
 
     public function rtInformations(): HasMany
     {
-        return $this->hasMany(RtInformation::class, 'created_by');
+        return $this->hasMany(
+            RtInformation::class,
+            'created_by'
+        );
     }
 
     public function emergencyReports(): HasMany
@@ -97,12 +111,20 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function scopeWarga(Builder $query): Builder
     {
-        return $query->whereHas('roles', fn (Builder $roleQuery): Builder => $roleQuery->where('name', 'warga'));
+        return $query->whereHas(
+            'roles',
+            fn (Builder $roleQuery): Builder =>
+                $roleQuery->where('name', 'warga')
+        );
     }
 
     public function scopeKetuaRt(Builder $query): Builder
     {
-        return $query->whereHas('roles', fn (Builder $roleQuery): Builder => $roleQuery->where('name', 'ketua_rt'));
+        return $query->whereHas(
+            'roles',
+            fn (Builder $roleQuery): Builder =>
+                $roleQuery->where('name', 'ketua_rt')
+        );
     }
 
     public function isWarga(): bool
@@ -115,6 +137,21 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasRole('ketua_rt');
     }
 
+    public function isVerified(): bool
+    {
+        return $this->verification_status === 'verified';
+    }
+
+    public function isPendingVerification(): bool
+    {
+        return $this->verification_status === 'pending';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->verification_status === 'rejected';
+    }
+
     /**
      * @return array<string, string>
      */
@@ -124,6 +161,7 @@ final class User extends Authenticatable implements FilamentUser, HasAvatar
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'verified_at' => 'datetime',
         ];
     }
 }

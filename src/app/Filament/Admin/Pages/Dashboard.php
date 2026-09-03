@@ -11,5 +11,9 @@ final class Dashboard extends BaseDashboard
 {
     protected static string|null|UnitEnum $navigationGroup = 'General';
 
-    protected static bool $shouldRegisterNavigation = false;
+    protected static bool $shouldRegisterNavigation = true;
+
+    protected static ?string $navigationLabel = 'Dashboard';
+
+    protected static ?int $navigationSort = 1;
 }
